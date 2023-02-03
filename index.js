@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 
+app.use(express.json())
+
 let persons = [
         {
         "name": "Arto Hellas",
@@ -51,11 +53,22 @@ app.post('/api/persons', (request, response) => {
     : 0
 
     const person = (request.body)
-    response.json(person)
     person.id = maxId + 1
+    console.log('%cindex.js line:57 person.name', 'color: #007acc;', person.name);
+    if (person.hasOwnProperty("name") && person.hasOwnProperty("number")) {
 
-    persons = persons.concat(person)
-    response.json(person)
+        if (persons.map(contact => contact.name === person.name)) {
+            response.json({error: "Names must be unique"})
+            response.status(200).end()
+        } else {
+            persons = persons.concat(person)
+            response.json(person)
+            console.log("added new person")
+        }        
+    } else {
+        response.json({error: 'the name or number is missing'})
+        response.status(200).end()
+    }
 })
 
 app.delete('/api/persons/:id', (request, response) => {
