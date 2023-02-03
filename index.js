@@ -1,7 +1,25 @@
 const express = require('express')
 const app = express()
+const morgan = require('morgan')
+const cors = require('cors')
 
+app.use(cors())
 app.use(express.json())
+app.use(morgan(function (tokens, req, res) {
+        let pituus = tokens.res(req, res, 'content-length')
+        if (pituus === undefined) {
+            pituus = "-"
+        }
+        return [
+            tokens.method(req, res),
+            tokens.url(req, res),
+            tokens.status(req, res),
+            pituus, '-',
+            tokens['response-time'](req, res), 'ms',
+            JSON.stringify(req.body)
+            ].join(' ')
+    
+}))
 
 let persons = [
         {
@@ -54,10 +72,9 @@ app.post('/api/persons', (request, response) => {
 
     const person = (request.body)
     person.id = maxId + 1
-    console.log('%cindex.js line:57 person.name', 'color: #007acc;', person.name);
     if (person.hasOwnProperty("name") && person.hasOwnProperty("number")) {
 
-        if (persons.map(contact => contact.name === person.name)) {
+        if (persons.find(contact => contact.name === person.name)) {
             response.json({error: "Names must be unique"})
             response.status(200).end()
         } else {
