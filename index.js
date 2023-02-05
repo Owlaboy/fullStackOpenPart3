@@ -85,8 +85,21 @@ app.post('/api/persons', (request, response) => {
         }        
     } else {
         response.json({error: 'the name or number is missing'})
-        response.status(200).end()
+        response.status(204).end()
     }
+})
+
+// Correct this plis man i wanna be abel to actually wortk :cryingemoji:
+app.put('/api/persons/:id', (request, response) => {
+    const id = Number(request.params.id)
+    const requestdata = request.body
+    persons = persons.map(person => {
+        if (person.id === id) {
+            person.number = requestdata.number
+        }
+        return person
+    })
+    response.status(200).end()
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -96,7 +109,7 @@ app.delete('/api/persons/:id', (request, response) => {
     response.status(204).end()
 })
   
-    const PORT = process.env.PORT || 3001
-    app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-  })
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+console.log(`Server running on port ${PORT}`)
+})
