@@ -2,10 +2,34 @@ const express = require('express')
 const app = express()
 const morgan = require('morgan')
 const cors = require('cors')
+require('dotenv').config()
+
+const mongoose = require('mongoose')
+
+const url = process.env.MONGODB_URI
+
+mongoose.set('strictQuery', false)
+mongoose.connect(url)
+
+const personSchema = new mongoose.Schema({
+    name: String,
+    number: String,
+  })
+
+personSchema.set('toJSON', {
+    transform: (document, returnedObject) => {
+        returnedObject.id = returnedObject._id.toString()
+        delete returnedObject._id
+        delete returnedObject.__v
+    }
+})
+
+const Person = mongoose.model('Person', personSchema)
+
 
 app.use(express.static('build'))
-app.use(cors())
 app.use(express.json())
+app.use(cors())
 app.use(morgan(function (tokens, req, res) {
         let pituus = tokens.res(req, res, 'content-length')
         if (pituus === undefined) {
@@ -21,6 +45,7 @@ app.use(morgan(function (tokens, req, res) {
             ].join(' ')
     
 }))
+
 
 let persons = [
         {
@@ -43,7 +68,7 @@ let persons = [
 app.get('/', (request, response) => {
     response.send('<h1>Hello World!</h1>')
   })
-  
+
 app.get('/info', (request, response) => {
     let line1 = "<div>Phonebook has info for " + persons.length + " people</div>"
     let today = new Date()
@@ -52,63 +77,76 @@ app.get('/info', (request, response) => {
     response.send(line1+line2)
 })
 
-app.get('/api/persons', (request, response) => {
-    response.json(persons)
+app.get('/api/persons', (request, response, next) => {
+    Person.find({})
+    .then(people => {
+        response.json(people)
+    })
+    .catch(error => next(error))
   })
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-    if (person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
-})
+app.use(morgan('tiny'))
 
-app.post('/api/persons', (request, response) => {
-    const maxId = persons.length > 0 
-    ? Math.max(...persons.map(n => n.id))
-    : 0
-
-    const person = (request.body)
-    person.id = maxId + 1
-    if (person.hasOwnProperty("name") && person.hasOwnProperty("number")) {
-
-        if (persons.find(contact => contact.name === person.name)) {
-            response.json({error: "Names must be unique"})
-            response.status(200).end()
-        } else {
-            persons = persons.concat(person)
+app.get('/api/persons/:id', (request, response, next) => {
+    Person.findById(request.params.id)
+    .then(person => {
+        if (person) {
             response.json(person)
-            console.log("added new person")
-        }        
-    } else {
-        response.json({error: 'the name or number is missing'})
-        response.status(204).end()
-    }
-})
-
-// Correct this plis man i wanna be abel to actually wortk :cryingemoji:
-app.put('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const requestdata = request.body
-    persons = persons.map(person => {
-        if (person.id === id) {
-            person.number = requestdata.number
+        } else {
+            response.status(404).end()
         }
-        return person
     })
-    response.status(200).end()
+    .catch(error => next(error))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
+app.use(morgan('tiny'))
 
-    response.status(204).end()
+app.post('/api/persons', (request, response, next) => {
+    const data = (request.body)
+    const person = new Person({
+        name: data.name,
+        number: data.number
+    })
+
+    if (data.name === undefined || data.number === undefined) {
+        return response.status(400).json({error: 'the name or number is missing'})
+    }
+
+    persons = persons.concat(data)
+    person.save()
+    .then(result => {
+        response.json(result)
+    })
+    .catch(error => next(error))
 })
-  
+
+app.use(morgan('tiny'))
+
+app.put('/api/persons/:id', (request, response, next) => {
+    const requestdata = request.body
+    const person = {
+        name: requestdata.name,
+        number: requestdata.number
+    }
+
+    Person.findByIdAndUpdate(request.params.id, person, {new: true})
+    .then(updatedPerson => {
+        response.json(updatedPerson)
+    })
+    .catch(error => next(error))
+})
+
+app.use(morgan('tiny'))
+
+app.delete('/api/persons/:id', (request, response, next) => {
+    Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+        response.status(204).end()
+    })
+    .catch(error  => next(error))
+})
+
+app.use(morgan('tiny'))
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
 console.log(`Server running on port ${PORT}`)
