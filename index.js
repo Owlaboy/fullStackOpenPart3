@@ -12,8 +12,23 @@ mongoose.set('strictQuery', false)
 mongoose.connect(url)
 
 const personSchema = new mongoose.Schema({
-    name: String,
-    number: String,
+    name: {
+        type: String,
+        minlength: 3,
+        message: props => `${props.value} is not a valid name!`,
+        required: [true, 'Name required']
+    },
+    number: {
+        type: String,
+        minlength: 8,
+        validate: {
+            validator: function(v) {
+                return /\d{2,3}-\d{5,}/.test(v);
+            },
+            message: props => `${props.value} is not a valid phone number!`
+        },
+        required: [true, 'User phone number required']
+    },
   })
 
 personSchema.set('toJSON', {
@@ -101,12 +116,25 @@ app.get('/api/persons/:id', (request, response, next) => {
 
 app.use(morgan('tiny'))
 
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {    
+    return response.status(400).json({ error: error.message })
+  }
+
+  next(error)
+}
+
 app.post('/api/persons', (request, response, next) => {
     const data = (request.body)
     const person = new Person({
         name: data.name,
         number: data.number
     })
+    let error = person.validateSync()
 
     if (data.name === undefined || data.number === undefined) {
         return response.status(400).json({error: 'the name or number is missing'})
@@ -120,7 +148,7 @@ app.post('/api/persons', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.use(morgan('tiny'))
+app.use(errorHandler)
 
 app.put('/api/persons/:id', (request, response, next) => {
     const requestdata = request.body
