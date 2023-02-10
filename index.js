@@ -11,6 +11,8 @@ const url = process.env.MONGODB_URI
 mongoose.set('strictQuery', false)
 mongoose.connect(url)
 
+
+
 const personSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -100,8 +102,6 @@ app.get('/api/persons', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.use(morgan('tiny'))
-
 app.get('/api/persons/:id', (request, response, next) => {
   Person.findById(request.params.id)
     .then(person => {
@@ -113,20 +113,6 @@ app.get('/api/persons/:id', (request, response, next) => {
     })
     .catch(error => next(error))
 })
-
-app.use(morgan('tiny'))
-
-const errorHandler = (error, request, response, next) => {
-  console.error(error.message)
-
-  if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' })
-  } else if (error.name === 'ValidationError') {    
-    return response.status(400).json({ error: error.message })
-  }
-
-  next(error)
-}
 
 app.post('/api/persons', (request, response, next) => {
   const data = (request.body)
@@ -148,8 +134,6 @@ app.post('/api/persons', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.use(errorHandler)
-
 app.put('/api/persons/:id', (request, response, next) => {
   const requestdata = request.body
   const person = {
@@ -164,8 +148,6 @@ app.put('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.use(morgan('tiny'))
-
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id)
     .then(result => {
@@ -174,7 +156,16 @@ app.delete('/api/persons/:id', (request, response, next) => {
     .catch(error  => next(error))
 })
 
-app.use(morgan('tiny'))
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)}
+
+app.use(errorHandler)
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
