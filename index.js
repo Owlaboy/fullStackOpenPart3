@@ -27,7 +27,7 @@ const personSchema = new mongoose.Schema({
       validator: function(v) {
         return /\d{2,3}-\d{5,}/.test(v)
       },
-      message: props => `${props.value} is not a valid phone number!`
+      message: props => `${props.value} is not a valid phone number! The number must consist of two sections separated by a dash. The first section must be at least two digits long and the second section must be at least five digits long.`
     },
     required: [true, 'User phone number required']
   },
@@ -120,13 +120,11 @@ app.post('/api/persons', (request, response, next) => {
     name: data.name,
     number: data.number
   })
-  let error = person.validateSync()
 
   if (data.name === undefined || data.number === undefined) {
     return response.status(400).json({error: 'the name or number is missing'})
   }
-
-  persons = persons.concat(data)
+  
   person.save()
     .then(result => {
       response.json(result)
@@ -161,6 +159,8 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError'){
+    return response.status(400).json({ error: error.message })
   }
 
   next(error)}
